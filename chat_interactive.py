@@ -20,18 +20,18 @@ class CustomInteractiveConsole(code.InteractiveConsole):
         prompt += " "
         return input(prompt)
 
-    async def push(self, line, conn:EchoQuicConnection):
-        first_cmd_option = line.split()[0].strip()
+    async def push(self, command, conn:EchoQuicConnection):
+        first_cmd_option = command.split()[0].strip()
         
         if first_cmd_option == 'login':
             # asyncio.run(start_client())  # Custom command to start the client
             print ('Logging in......')
-            await echo_client.echo_client_login(conn)
-        elif first_cmd_option == 'bye':
+            await echo_client.echo_client_login(conn, command)
+        elif first_cmd_option == 'bye' or first_cmd_option == 'logoff' or first_cmd_option == 'exit':
             print ("Signing off......")
             raise SystemExit
         elif first_cmd_option == 'help' or first_cmd_option == "?":
-            print ("Signing off......")
+            print ("[Usage] : login , help, ? , send, bye, logoff, exit")
             raise SystemExit
         else:
             print ("Invalid chat command")
