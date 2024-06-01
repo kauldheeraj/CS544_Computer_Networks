@@ -6,7 +6,7 @@ class QuicStreamEvent():
         self.data = data
         self.end_stream = end_stream
         
-class EchoQuicConnection():
+class ChatQuicConnection():
     def __init__(self, send:Coroutine[QuicStreamEvent, None, None], 
                  receive: Coroutine[None, None, QuicStreamEvent],
                  close:Optional[Callable[[], None]], 

@@ -1,9 +1,9 @@
 import argparse
 import asyncio
 from aioquic.quic.configuration import QuicConfiguration
-import echo_client
+import chat_client
 import quic_engine
-import echo_server
+import chat_server
 
 def client_mode(args):
     server_address = args.server
@@ -24,7 +24,7 @@ def server_mode(args):
     asyncio.run(quic_engine.run_server(listen_address, listen_port, server_config))
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Echo example')
+    parser = argparse.ArgumentParser(description='Chat Project')
     subparsers = parser.add_subparsers(dest='mode', help='Mode to run the application in', required=True)
     
     client_parser = subparsers.add_parser('client')
@@ -49,4 +49,3 @@ if __name__ == '__main__':
         server_mode(args)
     else:
         print('Invalid mode')
-

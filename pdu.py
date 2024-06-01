@@ -15,6 +15,7 @@ class ContentType(Enum):
     CONTENT_LOGIN = 2
     CONTENT_MESSAGE = 3
     CONTENT_ERROR_MSG = 4
+    CONTENT_GET_MSG = 5
 
 # Define the UserIdPasskey class
 @dataclass

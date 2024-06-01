@@ -1,13 +1,13 @@
 
 from typing import Dict
 import json
-from echo_quic import EchoQuicConnection, QuicStreamEvent
+from chat_quic import ChatQuicConnection, QuicStreamEvent
 import pdu
 import code
 import argparse
 import asyncio
 import subprocess
-import echo_client
+import chat_client
 #New changes to test
 class CustomInteractiveConsole(code.InteractiveConsole):
     def __init__(self, locals=None, filename="<console>", custom_prompt=">>>"):
@@ -20,13 +20,13 @@ class CustomInteractiveConsole(code.InteractiveConsole):
         prompt += " "
         return input(prompt)
 
-    async def push(self, command, conn:EchoQuicConnection):
+    async def push(self, command, conn:ChatQuicConnection):
         first_cmd_option = command.split()[0].strip()
         
         if first_cmd_option == 'login':
             # asyncio.run(start_client())  # Custom command to start the client
             print ('Logging in......')
-            await echo_client.echo_client_login(conn, command)
+            await chat_client.chat_client_login(conn, command)
         elif first_cmd_option == 'bye' or first_cmd_option == 'logoff' or first_cmd_option == 'exit':
             print ("Signing off......")
             raise SystemExit
@@ -43,9 +43,9 @@ class CustomInteractiveConsole(code.InteractiveConsole):
             # except FileNotFoundError:
             #     return super().push(line)
             
-# def chat_client_interactive(conn:EchoQuicConnection):
+# def chat_client_interactive(conn:ChatQuicConnection):
 
-async def interactive_shell(conn:EchoQuicConnection):
+async def interactive_shell(conn:ChatQuicConnection):
     variables = globals().copy()
     variables.update(locals())
     custom_prompt="CS544_Chat>>>"
@@ -56,9 +56,6 @@ async def interactive_shell(conn:EchoQuicConnection):
             await shell.push(line, conn)
         except EOFError:
             # Exit on Ctrl+D or EOF
-            break
+            break        
     # shell.interact() 
-
-
-
     # interactive_shell()
