@@ -43,42 +43,47 @@ async def chat_server_proto(scope:Dict, conn:ChatQuicConnection, client_conn_lis
       message:QuicStreamEvent = await conn.receive()
       
       dgram_in = pdu.Datagram.from_bytes(message.data)
-
       print("[svr] received message from: ", dgram_in.sender)
       
-      if (dgram_in.content_type == pdu.ContentType.CONTENT_LOGIN):
+      if (dgram_in.content_type == pdu.ContentType.CONTENT_MESSAGE):
+            print(f"Sent by :{dgram_in.sender}")
+            print(f"Sent to :{dgram_in.content.message.target_user_id}")
+            print(f"Message text :{dgram_in.content.message.message_text}")
+            dgram_out = dgram_in 
+      elif (dgram_in.content_type == pdu.ContentType.CONTENT_LOGIN):
             try :
                   await authenticate_user(dgram_in.content.user_id_passkey, user_id_pass_key)
                   dgram_out = dgram_in         
             except ServerError as e:
                   err_msg = pdu.ErrorMsg(error_message=str(e))
-                  dgram_out = pdu.Datagram(pdu.ContentType.CONTENT_ERROR_MSG, dgram_in.sender, pdu.Content(err_msg=err_msg))
+                  dgram_out = pdu.Datagram(pdu.ContentType.CONTENT_ERROR_MSG, dgram_in.sender, pdu.Content(err_msg=err_msg),"")
       else:
             dgram_out = dgram_in
       
       stream_id = message.stream_id
-      #   print(stream_id)
-      #   print("stream id")
       sender = str(dgram_out.sender)
-      dgram_out.sender = "SVR-ACK: " + str(dgram_out.sender)
+      dgram_out.ack = "SVR-ACK: " + str(dgram_out.sender)
       rsp_msg = dgram_out.to_bytes()
       rsp_evnt = QuicStreamEvent(stream_id, rsp_msg, False)
-
-      # Logic to store connection
-      # local_client_conn_list : List[Client_Connection] = []
       local_client_conn_list = client_conn_list
-      is_present = 0
-      print("Current number of connections = " + str(len(local_client_conn_list)))
-      for conns in client_conn_list:
-            if conns.connection.__eq__(conn):
-                  print("Connection already found:" + sender + ":" + str(conns.stream_id))   
-                  is_present = 1
+      print (f"Connection =  {id(conn)}")
+      if (dgram_in.content_type != pdu.ContentType.CONTENT_CONNECTION_SET_UP):
+            # Logic to store connection
+            
+            is_present = 0
 
-      if is_present == 0 :
-            curr_conn = Client_Connection(conn,sender,stream_id)
-            local_client_conn_list.append(curr_conn)
-               
-      # Logic to store connection
+            for conns in client_conn_list:
+                  if id(conn)==id(conns):
+                        print("Connection already found : User= " + sender + ", Existing User = :" + conns.user +  ", stream_id=" + str(conns.stream_id))   
+                        is_present = 1
+                        if (dgram_in.content_type != pdu.ContentType.CONTENT_MESSAGE):
+                              conns.stream_id = stream_id
+
+            if is_present == 0 :
+                  curr_conn = Client_Connection(conn,sender,stream_id)
+                  local_client_conn_list.append(curr_conn)
+                  
+            # Logic to store connection
 
       await conn.send(rsp_evnt)
       return local_client_conn_list

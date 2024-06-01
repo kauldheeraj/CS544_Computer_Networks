@@ -39,14 +39,14 @@ CLIENT_MODE = 1
 
 
 class AsyncQuicServer(QuicConnectionProtocol):
-    def __init__(self, *args, **kwargs):
-        print("____AsyncQuicServer_Init___")
+    def __init__(self, *args, conn_list=None,  **kwargs):
+        # print("____AsyncQuicServer_Init___")
         super().__init__(*args, **kwargs)
         self._handlers: Dict[int, ChatServerRequestHandler] = {}
         self._client_handler: Optional[ChatClientRequestHandler] = None
         self._is_client: bool = self._quic.configuration.is_client
         self._mode: int = SERVER_MODE if not self._is_client else CLIENT_MODE
-        self.conn_list : List[chat_server.Client_Connection] = []
+        self.conn_list: List[chat_server.Client_Connection] = conn_list
         if self._mode == CLIENT_MODE:
             self._attach_client_handler()
         # try:
@@ -57,7 +57,7 @@ class AsyncQuicServer(QuicConnectionProtocol):
         #     print("Not able to track in AsyncQuicServer")
 
     def _attach_client_handler(self): 
-        print("____attach_client_handler___")
+        # print("____attach_client_handler___")
         if self._mode == CLIENT_MODE:
             self._client_handler = ChatClientRequestHandler(
                        authority=self._quic.configuration.server_name,
@@ -74,12 +74,12 @@ class AsyncQuicServer(QuicConnectionProtocol):
         self._handlers.pop(stream_id)
         
     def _quic_client_event_dispatch(self, event):
-        print("____quic_client_event_dispatch___")
+        # print("____quic_client_event_dispatch___")
         if isinstance(event, StreamDataReceived):
             self._client_handler.quic_event_received(event)
         
     def _quic_server_event_dispatch(self, event):
-        print("___quic_server_event_dispatch___")
+        # print("___quic_server_event_dispatch___")
         handler = None
         if isinstance(event, StreamDataReceived):
             if event.stream_id not in self._handlers:
@@ -101,8 +101,7 @@ class AsyncQuicServer(QuicConnectionProtocol):
                 handler.quic_event_received(event)
 
     def quic_event_received(self, event):
-        print("__quic_event_received___")
-        # self.track_int :int=1
+        # print("__quic_event_received___")
         if self._mode == SERVER_MODE:
             self._quic_server_event_dispatch(event)
             # print ("Quic server event received")
@@ -127,10 +126,16 @@ class SessionTicketStore:
     def pop(self, label: bytes) -> Optional[SessionTicket]:
         return self.tickets.pop(label, None)
 
-async def run_server(server, server_port, configuration):  
+async def run_server(server, server_port, configuration  , conn_list:List[chat_server.Client_Connection] ):  
     print("[svr] Server starting...")  
+    
+    # Custom protocol creation function
+    def create_protocol(*args, **kwargs):
+        return AsyncQuicServer(*args, conn_list=conn_list, **kwargs)
+    
     await serve(server, server_port, configuration=configuration, 
-            create_protocol=AsyncQuicServer,
+            # create_protocol=AsyncQuicServer,
+            create_protocol=create_protocol,
             session_ticket_fetcher=SessionTicketStore().pop,
             session_ticket_handler=SessionTicketStore().add)
     await asyncio.Future()
@@ -140,9 +145,13 @@ async def run_server(server, server_port, configuration):
     # await asyncio.gather(server_task, main_loop_task)    
               
 async def run_client(server, server_port, configuration):    
-    print("__run_client___")
+    # print("__run_client___")
+
+    def create_protocol(*args, **kwargs):
+        return AsyncQuicServer(*args, conn_list=List[chat_server.Client_Connection], **kwargs)
+    
     async with connect(server, server_port, configuration=configuration, 
-            create_protocol=AsyncQuicServer) as client:
+            create_protocol=create_protocol) as client:
         await asyncio.ensure_future(client._client_handler.launch_chat())
 
 class ChatServerRequestHandler:
@@ -169,10 +178,10 @@ class ChatServerRequestHandler:
         self.conn_list = conn_list
         if stream_ended:
             self.queue.put_nowait({"type": "quic.stream_end"})
-        print("__ChatServerRequestHandler_init___")
+        # print("__ChatServerRequestHandler_init___")
     
     def quic_event_received(self, event: StreamDataReceived) -> None:
-        print("__quic_event_received___")
+        # print("__quic_event_received___")
          
         self.queue.put_nowait(
             QuicStreamEvent(event.stream_id, event.data, 
@@ -197,22 +206,22 @@ class ChatServerRequestHandler:
         self.connection.close()
         
     async def launch_chat(self):
-        print("__launch_chat___")
+        # print("__launch_chat___")
         qc = ChatQuicConnection(self.send, 
                 self.receive, self.close, None)
-        try:
-            print(len(self.conn_list))
-            print("Able to track in quic_event_received") 
-            self.conn_list = await chat_server.chat_server_proto(self.scope, 
-                qc, self.conn_list)               
-        except:
-            print("Not able to track in quic_event_received") 
+        # try:
+            # print("Total Connections =" + str(len(self.conn_list)))
+            # print("Able to track in quic_event_received") 
+        self.conn_list = await chat_server.chat_server_proto(self.scope, 
+            qc, self.conn_list)               
+        # except:
+            # print("Not able to track in quic_event_received") 
 
-        try:
-            print(len(self.conn_list))
-            print("Able to track in quic_event_received after return") 
-        except:
-            print("Not able to track in quic_event_received after return") 
+        # try:
+        #     print(len(self.conn_list))
+        #     print("Able to track in quic_event_received after return") 
+        # except:
+        #     print("Not able to track in quic_event_received after return") 
 
         # print ("Launch Chat Start")  
         # print(f"client_conn_list is None: {self.client_conn_list is None}")
@@ -229,13 +238,13 @@ class ChatClientRequestHandler(ChatServerRequestHandler):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print("__ChatClientRequestHandler__ Init")
+        # print("__ChatClientRequestHandler__ Init")
 
     def get_next_stream_id(self) -> int:
         return self.connection.get_next_available_stream_id()
     
     async def launch_chat(self):
-        print("launch_chat")
+        # print("launch_chat")
         qc = ChatQuicConnection(self.send, 
                 self.receive, self.close, 
                 self.get_next_stream_id)

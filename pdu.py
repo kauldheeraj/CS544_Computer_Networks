@@ -38,15 +38,35 @@ class UserIdPasskey:
 # Define the Message class
 @dataclass
 class Message:
+    target_user_id : str
     message_text: str
 
     def to_bytes(self) -> bytes:
-            return self.message_text.encode('utf-8')
+            total_bytes = self.target_user_id.encode('utf-8')[:32].ljust(32, b'\x01')
+            total_bytes += self.message_text.encode('utf-8')[:150].ljust(150, b'\x01')
+            return total_bytes
 
     @staticmethod
     def from_bytes(data: bytes) -> 'Message':
-        return Message(message_text=data.decode('utf-8'))
+        target_user_id = data[:32].rstrip(b'\x01').decode('utf-8')
+        print(f"PDU Targer User ID = {target_user_id}")
+        message_text = data[32:].rstrip(b'\x01').decode('utf-8')
+        print(f"PDU Message Text = {message_text}")
+        return Message(target_user_id=target_user_id, message_text=message_text)
+        # return Message(message_text=data.decode('utf-8'))
+@dataclass
+class Acknowledgement:
+    ack_message : str
 
+    def to_bytes(self) -> bytes:
+        total_bytes = self.ack_message.encode('utf-8')
+        return total_bytes
+
+    @staticmethod
+    def from_bytes(data: bytes) -> 'Acknowledgement':
+        ack_message = data.decode('utf-8')
+        return Acknowledgement(ack_message=ack_message)
+    
 # Define the ErrorMsg class
 @dataclass
 class ErrorMsg:
@@ -90,7 +110,6 @@ class Content:
         elif content_type == ContentType.CONTENT_MESSAGE or content_type == ContentType.CONTENT_CONNECTION_SET_UP:
             return Content(message=Message.from_bytes(data))
         elif content_type == ContentType.CONTENT_ERROR_MSG:
-            print("Line 95")
             return Content(err_msg=ErrorMsg.from_bytes(data))
         else:
             raise ValueError('Unknown content type')
@@ -104,12 +123,13 @@ class Content:
 #     sent_time: float = field(default_factory=time.time)
 
 class Datagram:
-    def __init__(self, content_type: ContentType,  sender: str, content: Content, sz:int = 0, sent_time:float = 99):
+    def __init__(self, content_type: ContentType,  sender: str, content: Content, sz:int = 0, sent_time:float = 99, ack:str=""):
         self.content_type = content_type
         self.sender = sender
         self.content = content
         self.sz = sz
         self.sent_time = time.time()
+        self.ack = ack
         # self.sent_time :float = field(default_factory=time.time)
 
     # def __init__(self, mtype: int, msg: str, sz:int = 0):
@@ -131,6 +151,7 @@ class Datagram:
         total_bytes = b'\x00'.join([total_bytes, self.content.to_bytes(self.content_type)])
         total_bytes = b'\x00'.join([total_bytes, json.dumps(self.sz).encode('utf-8')])
         total_bytes = b'\x00'.join([total_bytes, json.dumps(self.sent_time).encode('utf-8')])
+        total_bytes = b'\x00'.join([total_bytes, json.dumps(self.ack).encode('utf-8')])
         return total_bytes
     
     @staticmethod
@@ -144,6 +165,7 @@ class Datagram:
         content = Content.from_bytes(parts[2],content_type)
         sz = json.loads(parts[3].decode('utf-8'))
         sent_time = json.loads(parts[4].decode('utf-8'))
-        return Datagram(content_type, sender, content, sz, sent_time)
+        ack = json.loads(parts[5].decode('utf-8'))
+        return Datagram(content_type, sender, content, sz, sent_time, ack)
       except Exception :
         print("Exception encountered while converting from_bytes")

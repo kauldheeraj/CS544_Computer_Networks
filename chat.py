@@ -4,12 +4,12 @@ from aioquic.quic.configuration import QuicConfiguration
 import chat_client
 import quic_engine
 import chat_server
-
+from typing import List
 def client_mode(args):
     server_address = args.server
     server_port = args.port
     cert_file = args.cert_file
-    
+    conn_list : List[chat_server.Client_Connection] = []
     config = quic_engine.build_client_quic_config(cert_file)
     asyncio.run(quic_engine.run_client(server_address, server_port, config))
     
@@ -19,9 +19,9 @@ def server_mode(args):
     listen_port = args.port
     cert_file = args.cert_file
     key_file = args.key_file
-    
+    conn_list : List[chat_server.Client_Connection] = []
     server_config = quic_engine.build_server_quic_config(cert_file, key_file)
-    asyncio.run(quic_engine.run_server(listen_address, listen_port, server_config))
+    asyncio.run(quic_engine.run_server(listen_address, listen_port, server_config, conn_list))
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Chat Project')
