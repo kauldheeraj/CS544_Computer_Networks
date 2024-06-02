@@ -59,7 +59,10 @@ async def chat_server_proto(scope:Dict, conn:ChatQuicConnection, client_conn_lis
                   dgram_out = pdu.Datagram(pdu.ContentType.CONTENT_ERROR_MSG, dgram_in.sender, pdu.Content(err_msg=err_msg),"")
       else:
             dgram_out = dgram_in
-      
+      ################
+      target_conn = None
+      target_stream_id = None
+
       stream_id = message.stream_id
       sender = str(dgram_out.sender)
       dgram_out.ack = "SVR-ACK: " + str(dgram_out.sender)
@@ -73,7 +76,7 @@ async def chat_server_proto(scope:Dict, conn:ChatQuicConnection, client_conn_lis
             is_present = 0
 
             for conns in client_conn_list:
-                  if id(conn)==id(conns):
+                  if sender == conns.user:
                         print("Connection already found : User= " + sender + ", Existing User = :" + conns.user +  ", stream_id=" + str(conns.stream_id))   
                         is_present = 1
                         if (dgram_in.content_type != pdu.ContentType.CONTENT_MESSAGE):
@@ -86,4 +89,19 @@ async def chat_server_proto(scope:Dict, conn:ChatQuicConnection, client_conn_lis
             # Logic to store connection
 
       await conn.send(rsp_evnt)
+      
+      target_is_present = 0
+      if (dgram_in.content_type == pdu.ContentType.CONTENT_MESSAGE):
+            target_user_id = dgram_in.content.message.target_user_id
+            for conns in client_conn_list:
+                  if target_user_id == conns.user:
+                        target_is_present = 1
+                        target_stream_id = conns.stream_id
+                        target_conn = conns.connection
+                        target_stream_id = conns.stream_id    
+            # new_stream_id = target_conn.new_stream()
+            if target_is_present:
+                  target_qs = QuicStreamEvent(target_stream_id, message.data, False)
+                  await target_conn.send(target_qs)
+
       return local_client_conn_list

@@ -4,11 +4,16 @@ import json
 from chat_quic import ChatQuicConnection, QuicStreamEvent
 import pdu
 
-async def wait_for_message(stop_event: asyncio.Event):
+async def wait_for_message(stop_event: asyncio.Event, conn:ChatQuicConnection):
     while not stop_event.is_set():
         # print("[svr] Server main loop running")
         # Add your server-side logic here
-        await asyncio.sleep(100)  # Sleep for 5 seconds
+        await asyncio.sleep(30)  # Sleep for 5 seconds
+        print("Refreshing......")
+
+        message:QuicStreamEvent = await conn.receive()
+        dgram_resp = pdu.Datagram.from_bytes(message.data)
+        print('[cli] got message from sender: ', dgram_resp.content.message.message_text)
         # print("Some input\n")
 
 async def handle_user_input(conn: ChatQuicConnection, stop_event: asyncio.Event):
@@ -16,7 +21,7 @@ async def handle_user_input(conn: ChatQuicConnection, stop_event: asyncio.Event)
    while not stop_event.is_set():
         print(f"User ID now = {current_user_id_l}")
         # Display the prompt and read input from the user
-        user_input = await asyncio.to_thread(input, "Chat_544 $$ " + current_user_id_l + ">>")
+        user_input = await asyncio.get_event_loop().run_in_executor(None, input, "Chat_544 $$ " + current_user_id_l + ">>")
         # Process the input
         if user_input.lower().split()[0].strip() == 'send': 
            await chat_client_send(conn, user_input.lower(),current_user_id_l)
@@ -56,7 +61,7 @@ async def chat_client_proto(scope:Dict, conn:ChatQuicConnection):
     dgram_resp = pdu.Datagram.from_bytes(message.data)
     print('[cli] got message from sender: ', dgram_resp.sender)
     stop_event = asyncio.Event()
-    main_loop_task = asyncio.ensure_future(wait_for_message(stop_event))
+    main_loop_task = asyncio.ensure_future(wait_for_message(stop_event, conn))
     # print (f"Connection Before handing input = {id(conn)}")
     user_input_task = asyncio.ensure_future(handle_user_input(conn,stop_event))    
     await asyncio.gather(main_loop_task, user_input_task)

@@ -10,7 +10,7 @@ import json
 from chat_quic import ChatQuicConnection, QuicStreamEvent
 import chat_server, chat_client
 from dataclasses import dataclass
-
+import chat_states
 ALPN_PROTOCOL = "chat-protocol"
 
 def build_server_quic_config(cert_file, key_file) -> QuicConfiguration:
@@ -39,7 +39,7 @@ CLIENT_MODE = 1
 
 
 class AsyncQuicServer(QuicConnectionProtocol):
-    def __init__(self, *args, conn_list=None,  **kwargs):
+    def __init__(self, *args, conn_list=None, dfa_state=None, **kwargs):
         # print("____AsyncQuicServer_Init___")
         super().__init__(*args, **kwargs)
         self._handlers: Dict[int, ChatServerRequestHandler] = {}
@@ -47,6 +47,8 @@ class AsyncQuicServer(QuicConnectionProtocol):
         self._is_client: bool = self._quic.configuration.is_client
         self._mode: int = SERVER_MODE if not self._is_client else CLIENT_MODE
         self.conn_list: List[chat_server.Client_Connection] = conn_list
+        self.dfa_state = dfa_state
+        
         if self._mode == CLIENT_MODE:
             self._attach_client_handler()
         # try:
@@ -130,8 +132,9 @@ async def run_server(server, server_port, configuration  , conn_list:List[chat_s
     print("[svr] Server starting...")  
     
     # Custom protocol creation function
+    server_state = chat_states.ServerStates.S_CONNECTED
     def create_protocol(*args, **kwargs):
-        return AsyncQuicServer(*args, conn_list=conn_list, **kwargs)
+        return AsyncQuicServer(*args, conn_list=conn_list, dfa_state=chat_states.next_server_state(server_state), **kwargs)
     
     await serve(server, server_port, configuration=configuration, 
             # create_protocol=AsyncQuicServer,
@@ -139,8 +142,7 @@ async def run_server(server, server_port, configuration  , conn_list:List[chat_s
             session_ticket_fetcher=SessionTicketStore().pop,
             session_ticket_handler=SessionTicketStore().add)
     await asyncio.Future()
-    
-    
+
     # Wait for both tasks to complete (which they won't, in this case)
     # await asyncio.gather(server_task, main_loop_task)    
               
@@ -148,7 +150,7 @@ async def run_client(server, server_port, configuration):
     # print("__run_client___")
 
     def create_protocol(*args, **kwargs):
-        return AsyncQuicServer(*args, conn_list=List[chat_server.Client_Connection], **kwargs)
+        return AsyncQuicServer(*args, conn_list=List[chat_server.Client_Connection], dfa_state=None, **kwargs)
     
     async with connect(server, server_port, configuration=configuration, 
             create_protocol=create_protocol) as client:
@@ -190,6 +192,7 @@ class ChatServerRequestHandler:
 
     async def receive(self) -> QuicStreamEvent:
         queue_item = await self.queue.get()
+        
         return queue_item
     
     async def send(self, message: QuicStreamEvent) -> None:
