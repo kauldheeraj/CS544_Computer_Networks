@@ -10,16 +10,14 @@ async def wait_for_message(stop_event: asyncio.Event, conn:ChatQuicConnection):
         # Add your server-side logic here
         await asyncio.sleep(30)  # Sleep for 5 seconds
         print("Refreshing......")
-
         message:QuicStreamEvent = await conn.receive()
         dgram_resp = pdu.Datagram.from_bytes(message.data)
-        print('[cli] got message from sender: ', dgram_resp.content.message.message_text)
+        print(dgram_resp.sender , ' says :' , dgram_resp.content.message.message_text)
         # print("Some input\n")
 
 async def handle_user_input(conn: ChatQuicConnection, stop_event: asyncio.Event):
    current_user_id_l = ""
    while not stop_event.is_set():
-        print(f"User ID now = {current_user_id_l}")
         # Display the prompt and read input from the user
         user_input = await asyncio.get_event_loop().run_in_executor(None, input, "Chat_544 $$ " + current_user_id_l + ">>")
         # Process the input
@@ -27,7 +25,6 @@ async def handle_user_input(conn: ChatQuicConnection, stop_event: asyncio.Event)
            await chat_client_send(conn, user_input.lower(),current_user_id_l)
 
         elif user_input.lower().split()[0].strip() == 'login':
-            print (f"Current connection in handle user input = {id(conn)}")
             current_user_id_l = await chat_client_login(conn, user_input.lower())
         
         elif user_input.lower() == 'exit' or user_input.lower() == 'logoff' or user_input.lower() == 'bye':
@@ -108,7 +105,6 @@ async def chat_client_send(conn:ChatQuicConnection, command:str, user_id:str):
         
         target_user_id =  cmd_arr[1].strip()
         message_text = cmd_arr[2].strip()     
-        print (f"Message Type={message_text}")   
         message = pdu.Message (target_user_id=target_user_id, message_text=message_text)
         content = pdu.Content(message=message)
         

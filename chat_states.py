@@ -45,8 +45,3 @@ def next_server_state(current_state:ServerStates) -> ServerStates:
         return ServerStates.S_READY_TO_RECEIVE_SEND | ServerStates.S_WAITING_FOR_ACK
     elif current_state == ServerStates.S_WAITING_FOR_ACK :
         return ServerStates.S_READY_TO_RECEIVE_SEND
-
-st = ClientStates.C_CONNECTED.value
-ast = ClientStates.C_LOGGED_OFF.value
-print(st)
-print(ast)

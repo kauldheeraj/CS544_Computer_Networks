@@ -46,9 +46,9 @@ async def chat_server_proto(scope:Dict, conn:ChatQuicConnection, client_conn_lis
       print("[svr] received message from: ", dgram_in.sender)
       
       if (dgram_in.content_type == pdu.ContentType.CONTENT_MESSAGE):
-            print(f"Sent by :{dgram_in.sender}")
-            print(f"Sent to :{dgram_in.content.message.target_user_id}")
-            print(f"Message text :{dgram_in.content.message.message_text}")
+            # print(f"Sent by :{dgram_in.sender}")
+            # print(f"Sent to :{dgram_in.content.message.target_user_id}")
+            # print(f"Message text :{dgram_in.content.message.message_text}")
             dgram_out = dgram_in 
       elif (dgram_in.content_type == pdu.ContentType.CONTENT_LOGIN):
             try :
