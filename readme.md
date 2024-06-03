@@ -4,10 +4,20 @@
 2. The certs in the ./certs directory are fine for testing there is a script if you want to rebuild your own but you will need openssl installed
 3. run `python3 chat.py server` to start the server with defaults and `python3 chat.py client` to start the client with defaults.
 4. User id and passwords that can be used :
-        user_id='deekay', pass_key='dheeraj',
-        user_id='ryan', pass_key='reynolds',
-        user_id='jenny', pass_key='jennifer',
-        user_id='matt', pass_key='mathew'
+
+| User ID | PassKey |
+|---------|-------- |
+| deekay  | dheeraj |
+| ryan    | reynolds|
+| jenny   | jennifer|
+| matt    | mathew  |
+
+
+
+
+5. Refer the youtube video for demo :
+   https://youtu.be/IhHy6b8g2_0
+
 
 Correct output for server:
 
