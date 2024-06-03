@@ -90,11 +90,11 @@ async def chat_server_proto(scope:Dict, conn:ChatQuicConnection, client_conn_lis
             rsp_evnt = QuicStreamEvent(stream_id, rsp_msg, False)
             local_client_conn_list = client_conn_list
             # print (f"Source Connection =  {id(conn)}")
-            if (dgram_in.content_type != pdu.ContentType.CONTENT_CONNECTION_SET_UP):
+            if (dgram_in.content_type == pdu.ContentType.CONTENT_LOGIN or dgram_in.content_type == pdu.ContentType.CONTENT_MESSAGE):
                   # Logic to store connection
                   is_present = 0
-                  for conns in client_conn_list:
-                        print(f"User: {conns.user}, Stream ID: {conns.stream_id}, Connection: {id(conns.connection)}")
+                  # for conns in client_conn_list:
+                  #       print(f"User: {conns.user}, Stream ID: {conns.stream_id}, Connection: {id(conns.connection)}")
                   
                   # To update the latest stream id from the user in the list
                   iter_client_conn_list = client_conn_list
@@ -104,14 +104,13 @@ async def chat_server_proto(scope:Dict, conn:ChatQuicConnection, client_conn_lis
                               is_present = 1
                               client_conn_list[i].stream_id = stream_id
                               client_conn_list[i].connection = conn
-                              
-                  for conns in client_conn_list:
-                        print(f"User: {conns.user}, Stream ID: {conns.stream_id}, Connection: {id(conns.connection)}")
 
                   if is_present == 0 :
                         curr_conn = Client_Connection(conn,sender,stream_id, sender)
                         local_client_conn_list.append(curr_conn)
-                        
+
+                  # for conns in client_conn_list:
+                  #       print(f"User: {conns.user}, Stream ID: {conns.stream_id}, Connection: {id(conns.connection)}")                        
                   # Logic to store connection
 
             # await conn.send(rsp_evnt)

@@ -15,6 +15,7 @@ async def user_options_actions(user_input, conn, current_user_id_l, stop_event, 
             print ("[Usage] : bye/exit/logoff")
             return current_user_id_l
         elif current_user_id_l != "" or main_cmd == 'login':
+            #Implements DFA Validation for each state
             if main_cmd == 'send' or main_cmd == 'text': 
                 next_state = chat_states.ClientStates.C_READY_TO_SEND_RECEIVE
                 if chat_states.validate_client_state(current_client_state, next_state):
@@ -23,10 +24,12 @@ async def user_options_actions(user_input, conn, current_user_id_l, stop_event, 
                     print ("Next DFA State not valid for the option chosen.")
                     next_state=current_client_state
                 return current_user_id_l, next_state
-            elif main_cmd == 'login':
+            elif main_cmd == 'login' and len(user_input.lower().split()) == 3:
                 next_state = chat_states.ClientStates.C_WAITING_FOR_AUTHENTICATION
                 if chat_states.validate_client_state(current_client_state, next_state):
                     current_user_id_l = await chat_client_login(conn, user_input.lower())
+                    if current_user_id_l == "":
+                        next_state = current_client_state
                 else:
                     print ("Next DFA State not valid for the option chosen.")                
                     next_state=current_client_state
@@ -34,11 +37,14 @@ async def user_options_actions(user_input, conn, current_user_id_l, stop_event, 
             elif user_input.lower() == 'exit' or user_input.lower() == 'logoff' or user_input.lower() == 'bye':
                 next_state = chat_states.ClientStates.C_WAITING_TO_GET_LOGGED_OFF
                 if chat_states.validate_client_state(current_client_state, next_state):
-                    await chat_client_logoff(conn, current_user_id_l)
+                    await chat_client_logoff(conn, current_user_id_l, stop_event)
                 else:
                     print ("Next DFA State not valid for the option chosen.")
                     next_state=current_client_state                                
                 return None, next_state
+            else:
+                invalidCommand()
+                return current_user_id_l, current_client_state
         else:
             print(f"Received command: {user_input}")  
             invalidCommand()
@@ -65,8 +71,8 @@ async def handle_user_input(conn: ChatQuicConnection, stop_event: asyncio.Event,
         # Display the prompt and read input from the user
         
         try:
-            user_input = await asyncio.get_event_loop().run_in_executor(None, input, "Chat_544 $$ " + current_user_id_l + ">>")
-            # user_input = await asyncio.to_thread(input, "Chat_544 $$ " + current_user_id_l + ">>")
+            # user_input = await asyncio.get_event_loop().run_in_executor(None, input, "Chat_544 $$ " + current_user_id_l + ">>")
+            user_input = await asyncio.to_thread(input, "Chat_544 $$ " + current_user_id_l + ">>")
             return_user_id, client_state = await user_options_actions(user_input, conn, current_user_id_l, stop_event, client_state)
             if  return_user_id is None:
                 print("Exiting...")
@@ -75,7 +81,7 @@ async def handle_user_input(conn: ChatQuicConnection, stop_event: asyncio.Event,
             else:
                 current_user_id_l = return_user_id
         except:
-            print ("Exception in handle_user_input")
+            # print ("Exception in handle_user_input")
             continue
 
 #To display invalid command message
@@ -124,7 +130,6 @@ async def chat_client_login(conn:ChatQuicConnection, command:str) -> 'str':
         await conn.send(qs)
         message:QuicStreamEvent = await conn.receive() 
         dgram_resp = pdu.Datagram.from_bytes(message.data)
-
         if dgram_resp.content_type != pdu.ContentType.CONTENT_ERROR_MSG:
             print('[cli] Login Successful for : ', dgram_resp.sender)
             return dgram_resp.sender
@@ -153,7 +158,14 @@ async def chat_client_send(conn:ChatQuicConnection, command:str, user_id:str):
             
             new_stream_id = conn.new_stream()
             qs = QuicStreamEvent(new_stream_id, datagram.to_bytes(), False)
-            await conn.send(qs)
+            try:
+                server_send = await asyncio.wait_for(conn.send(qs), timeout=6) 
+            except asyncio.TimeoutError as e:
+                print ("Time out error in chat_client_send")
+            except:
+                print ("General error in chat_client_send")
+            
+            # await conn.send(qs)
             # message:QuicStreamEvent = await conn.receive()
 
             try:
@@ -166,11 +178,12 @@ async def chat_client_send(conn:ChatQuicConnection, command:str, user_id:str):
                     print('[cli] Error : ' , dgram_resp.content.err_msg.error_message)
                     return 1
             except asyncio.TimeoutError as e:
-                    print (e)
+                    print("Time out error")
                     traceback.print_exception()
                     pass
             
             except Exception as e:
+                    print("Some other error ")
                     traceback.print_exception() 
             dgram_resp = pdu.Datagram.from_bytes(message.data)
 
@@ -181,13 +194,15 @@ async def chat_client_send(conn:ChatQuicConnection, command:str, user_id:str):
                 print('[cli] Error : ' , dgram_resp.content.err_msg.error_message)
                 return 1
         else:
+            
             invalidCommand()
     except:
+        traceback.print_exception()
         print("Exception in chat_client_send")
     #END LOGGING IN    
 
 #Logging off
-async def chat_client_logoff(conn:ChatQuicConnection, current_user_id_l:str) -> 'str':
+async def chat_client_logoff(conn:ChatQuicConnection, current_user_id_l:str, stop_event: asyncio.Event) -> 'str':
     #START Logging
     print('[cli] Logging off...')
     content_type = pdu.ContentType.CONTENT_LOGOFF
@@ -201,8 +216,8 @@ async def chat_client_logoff(conn:ChatQuicConnection, current_user_id_l:str) -> 
         qs = QuicStreamEvent(new_stream_id, datagram.to_bytes(), False)
         
         await conn.send(qs)
+        stop_event.is_set() 
         message:QuicStreamEvent = await conn.receive()
-        print ("Line 206")
         dgram_resp = pdu.Datagram.from_bytes(message.data)
 
         if dgram_resp.content_type != pdu.ContentType.CONTENT_ERROR_MSG:
