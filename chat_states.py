@@ -1,6 +1,6 @@
 from enum import Enum
 
-class ClientStates(Enum):
+class ClientStates:
     C_CONNECTED = 0X00
     C_WAITING_FOR_AUTHENTICATION = 0X01
     C_READY_TO_SEND_RECEIVE = 0X02
@@ -8,7 +8,7 @@ class ClientStates(Enum):
     C_WAITING_TO_GET_LOGGED_OFF=0X04
     C_LOGGED_OFF=0X05
 
-class ServerStates(Enum):
+class ServerStates:
     S_CONNECTED = 0X00
     S_READY_TO_RECEIVE_SEND = 0X01
     S_MESSAGE_RECEIVED = 0X02
@@ -29,12 +29,14 @@ def validate_server_state(current_state:ServerStates,proposed_state:ServerStates
 def next_client_state(current_state:ClientStates) -> ClientStates:
     if current_state == ClientStates.C_CONNECTED:
         return ClientStates.C_WAITING_FOR_AUTHENTICATION
+    elif current_state == ClientStates.C_WAITING_FOR_AUTHENTICATION :
+        return ClientStates.C_READY_TO_SEND_RECEIVE  | ClientStates.C_WAITING_TO_GET_LOGGED_OFF
     elif current_state == ClientStates.C_READY_TO_SEND_RECEIVE :
         return ClientStates.C_WAITING_FOR_ACK | ClientStates.C_WAITING_TO_GET_LOGGED_OFF
     elif current_state == ClientStates.C_WAITING_FOR_ACK:
         return ClientStates.C_READY_TO_SEND_RECEIVE
     elif current_state == ClientStates.C_WAITING_TO_GET_LOGGED_OFF:
-        return ClientStates.C_LOGGED_OFF | ClientStates.C_READY_TO_SEND_RECEIVE
+        return ClientStates.C_LOGGED_OFF | ClientStates.C_CONNECTED
     
 def next_server_state(current_state:ServerStates) -> ServerStates:
     if current_state == ServerStates.S_CONNECTED :

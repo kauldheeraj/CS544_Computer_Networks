@@ -15,7 +15,7 @@ class ContentType(Enum):
     CONTENT_LOGIN = 2
     CONTENT_MESSAGE = 3
     CONTENT_ERROR_MSG = 4
-    CONTENT_GET_MSG = 5
+    CONTENT_LOGOFF = 5
 
 # Define the UserIdPasskey class
 @dataclass
@@ -49,11 +49,9 @@ class Message:
     @staticmethod
     def from_bytes(data: bytes) -> 'Message':
         target_user_id = data[:32].rstrip(b'\x01').decode('utf-8')
-        print(f"PDU Targer User ID = {target_user_id}")
         message_text = data[32:].rstrip(b'\x01').decode('utf-8')
-        print(f"PDU Message Text = {message_text}")
         return Message(target_user_id=target_user_id, message_text=message_text)
-        # return Message(message_text=data.decode('utf-8'))
+
 @dataclass
 class Acknowledgement:
     ack_message : str
@@ -70,21 +68,17 @@ class Acknowledgement:
 # Define the ErrorMsg class
 @dataclass
 class ErrorMsg:
-    # error_code: int
+
     error_message: str
 
     def to_bytes(self) -> bytes:
-        # error_code_bytes =  self.error_code.to_bytes(4, 'big')
         error_message_bytes = self.error_message.encode('utf-8')
-        # return error_code_bytes + error_message_bytes
         return error_message_bytes
     
     @staticmethod
     def from_bytes(data: bytes) -> 'ErrorMsg':
-        # error_code = int.from_bytes(data[:4], 'big')
         error_message = data.decode('utf-8')
         return ErrorMsg(error_message=error_message)
-        # return ErrorMsg(error_code=error_code, error_message=error_message)
     
 # Define the Content class with specific subclasses
 @dataclass
@@ -96,7 +90,7 @@ class Content:
     def to_bytes(self, content_type: ContentType) -> bytes:
         if content_type == ContentType.CONTENT_LOGIN:
             return self.user_id_passkey.to_bytes()
-        elif content_type == ContentType.CONTENT_MESSAGE or content_type == ContentType.CONTENT_CONNECTION_SET_UP:
+        elif content_type == ContentType.CONTENT_MESSAGE or content_type == ContentType.CONTENT_CONNECTION_SET_UP or content_type == ContentType.CONTENT_LOGOFF:
             return self.message.to_bytes()
         elif content_type == ContentType.CONTENT_ERROR_MSG:
             return self.err_msg.to_bytes()
@@ -107,20 +101,13 @@ class Content:
     def from_bytes(data: bytes, content_type: ContentType) -> 'Content':
         if content_type == ContentType.CONTENT_LOGIN:
             return Content(user_id_passkey=UserIdPasskey.from_bytes(data))
-        elif content_type == ContentType.CONTENT_MESSAGE or content_type == ContentType.CONTENT_CONNECTION_SET_UP:
+        elif content_type == ContentType.CONTENT_MESSAGE or content_type == ContentType.CONTENT_CONNECTION_SET_UP or content_type == ContentType.CONTENT_LOGOFF:
             return Content(message=Message.from_bytes(data))
         elif content_type == ContentType.CONTENT_ERROR_MSG:
             return Content(err_msg=ErrorMsg.from_bytes(data))
         else:
             raise ValueError('Unknown content type')
-# Define the ChatMessage class
-# @dataclass
-# class ChatMessage:
-#     type: int
-#     sender: str
-#     content_message: Content
-#     content_type: ContentType
-#     sent_time: float = field(default_factory=time.time)
+
 
 class Datagram:
     def __init__(self, content_type: ContentType,  sender: str, content: Content, sz:int = 0, sent_time:float = 99, ack:str=""):
@@ -130,12 +117,6 @@ class Datagram:
         self.sz = sz
         self.sent_time = time.time()
         self.ack = ack
-        # self.sent_time :float = field(default_factory=time.time)
-
-    # def __init__(self, mtype: int, msg: str, sz:int = 0):
-    #     self.mtype = mtype
-    #     self.msg = msg
-    #     self.sz = len(self.msg)
 
     def to_json(self):
         

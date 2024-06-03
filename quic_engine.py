@@ -36,8 +36,6 @@ def create_msg_payload(msg):
 SERVER_MODE = 0
 CLIENT_MODE = 1
 
-
-
 class AsyncQuicServer(QuicConnectionProtocol):
     def __init__(self, *args, conn_list=None, dfa_state=None, **kwargs):
         # print("____AsyncQuicServer_Init___")
@@ -51,12 +49,6 @@ class AsyncQuicServer(QuicConnectionProtocol):
         
         if self._mode == CLIENT_MODE:
             self._attach_client_handler()
-        # try:
-        #     print(self.track_int)
-        #     self.track_int=1
-        #     print("Able to track in AsyncQuicServer")
-        # except:
-        #     print("Not able to track in AsyncQuicServer")
 
     def _attach_client_handler(self): 
         # print("____attach_client_handler___")
@@ -212,29 +204,8 @@ class ChatServerRequestHandler:
         # print("__launch_chat___")
         qc = ChatQuicConnection(self.send, 
                 self.receive, self.close, None)
-        # try:
-            # print("Total Connections =" + str(len(self.conn_list)))
-            # print("Able to track in quic_event_received") 
         self.conn_list = await chat_server.chat_server_proto(self.scope, 
             qc, self.conn_list)               
-        # except:
-            # print("Not able to track in quic_event_received") 
-
-        # try:
-        #     print(len(self.conn_list))
-        #     print("Able to track in quic_event_received after return") 
-        # except:
-        #     print("Not able to track in quic_event_received after return") 
-
-        # print ("Launch Chat Start")  
-        # print(f"client_conn_list is None: {self.client_conn_list is None}")
-        # print(f"Type of client_conn_list: {type(self.client_conn_list)}")
-        # try:
-        #     print(f"Length of client_conn_list: {len(self.client_conn_list)}")
-        # except TypeError as e:
-        #     print(f"Error calculating length of client_conn_list: {e}")
-        #     print(f"client_conn_list: {self.client_conn_list}")        
-        # print ("Launch Chat Start")  
         print("___________________________________________________")      
 
 class ChatClientRequestHandler(ChatServerRequestHandler):
